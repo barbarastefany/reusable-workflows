@@ -27,18 +27,13 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
 
 jobs:
   create_pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Debug inputs
-        run: |
-          echo "source-branch='${{ inputs.source-branch }}'"
-          echo "target-branch='${{ inputs.target-branch }}'"
-
       - name: Fail if source-branch is empty
         run: |
           if [ -z "${SOURCE}" ]; then
@@ -53,28 +48,37 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Ensure remote branches are available
+      - name: Ensure remote branches exist
         run: |
           git fetch --no-tags --prune --unshallow || true
           git fetch origin "${{ inputs.source-branch }}:${{ inputs.source-branch }}" || true
           git fetch origin "${{ inputs.target-branch }}:${{ inputs.target-branch }}" || true
-          git branch -a
-          git rev-parse --verify "origin/${{ inputs.source-branch }}" || {
-            echo "Branch de origem não encontrada no remoto."
-            exit 1
-          }
-          git rev-parse --verify "origin/${{ inputs.target-branch }}" || {
-            echo "Branch alvo não encontrada no remoto."
-            exit 1
-          }
+          git rev-parse --verify "origin/${{ inputs.source-branch }}" || { echo "Branch de origem não encontrada no remoto."; exit 1; }
+          git rev-parse --verify "origin/${{ inputs.target-branch }}" || { echo "Branch alvo não encontrada no remoto."; exit 1; }
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+      - name: Create PR via API
+        uses: actions/github-script@v7
         with:
-          token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
-          base: ${{ inputs.target-branch }}
-          head: ${{ inputs.source-branch }}
-          title: ${{ inputs.pr-title }}
-          body: ${{ inputs.pr-body }}
-          maintainer-can-modify: true
-          draft: false
+          github-token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const head = '${{ inputs.source-branch }}';
+            const base = '${{ inputs.target-branch }}';
+            const title = `${{ toJSON(inputs.pr-title) }}`;
+            const body = `${{ toJSON(inputs.pr-body) }}`;
+
+            // Verifica se já existe PR aberto de head -> base
+            const existing = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: 'open', head: `${owner}:${head}`, base
+            });
+            if (existing.length > 0) {
+              core.info(`PR já existe: #${existing[0].number}`);
+              return;
+            }
+
+            // Cria PR
+            const pr = await github.rest.pulls.create({
+              owner, repo, head, base, title, body, maintainer_can_modify: true, draft: false
+            });
+            core.info(`PR criado: #${pr.data.number} (${pr.data.html_url})`);
