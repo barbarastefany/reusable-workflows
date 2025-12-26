@@ -1,3 +1,5 @@
+name: Create PR to main
+
 on:
   workflow_call:
     inputs:
@@ -14,7 +16,7 @@ on:
       pr-title:
         description: "Título do PR"
         required: false
-        default: "Automated PR: merge develop → main"
+        default: ""
         type: string
       pr-body:
         description: "Corpo/descrição do PR"
@@ -28,10 +30,12 @@ on:
         type: string
 
 permissions:
+  contents: write
   pull-requests: write
 
 jobs:
   create_pr:
+    name: Create PR source → target
     runs-on: ubuntu-latest
     steps:
       - name: Create PR via API (source → target com verificação de branches)
@@ -41,45 +45,52 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const base = core.getInput('target-branch') || 'main';
-            const head = core.getInput('source-branch') || 'develop';
-            const title = core.getInput('pr-title') || `PR criado automaticamente: merge ${head} → ${base}`;
+
+            // Captura e normaliza inputs
+            const normalize = (s, def) => {
+              let v = (s ?? def).trim();
+              v = v.replace(/^["']|["']$/g, '');            // remove aspas
+              v = v.replace(/^refs\/heads\//, '');           // remove prefixo
+              return v;
+            };
+
+            const head = normalize(core.getInput('source-branch') || '', 'develop'); // origem
+            const base = normalize(core.getInput('target-branch') || '', 'main');    // destino
+            const titleInput = core.getInput('pr-title') || '';
             const body = core.getInput('pr-body') || '';
 
-            // Verifica existência das branches via API (refs/heads/<branch>)
+            const title = titleInput !== ''
+              ? titleInput
+              : `PR criado automaticamente: merge ${head} → ${base}`;
+
             async function branchExists(branch) {
               try {
                 await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
                 return true;
               } catch (e) {
                 if (e.status === 404) return false;
-                throw e; // Erro inesperado
+                throw e;
               }
             }
 
-            const sourceExists = await branchExists(head);
-            if (!sourceExists) {
+            if (!(await branchExists(head))) {
               core.setFailed(`Branch de origem não encontrada: ${head}`);
               return;
             }
-
-            const targetExists = await branchExists(base);
-            if (!targetExists) {
+            if (!(await branchExists(base))) {
               core.setFailed(`Branch alvo não encontrada: ${base}`);
               return;
             }
 
-            // Verifica se já existe PR aberto de head -> base
             const existing = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: 'open', base, head: `${owner}:${head}`
             });
             if (existing.length > 0) {
-              core.info('PR já existe. Nada a fazer.');
+              core.info(`PR já existe: #${existing[0].number}`);
               return;
             }
 
-            // Cria PR
             const { data: pr } = await github.rest.pulls.create({
-              owner, repo, base, head, title, body, maintainer_can_modify: true
+              owner, repo, base, head, title, body, maintainer_can_modify: true, draft: false
             });
-            core.info(`PR criado: #${pr.number}`);
+            core.info(`PR criado: #${pr.number} (${pr.html_url})`);
