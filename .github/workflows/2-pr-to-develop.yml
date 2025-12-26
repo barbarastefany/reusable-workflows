@@ -2,28 +2,28 @@ on:
   workflow_call:
     inputs:
       source-branch:
-        description: "Branch de origem (ex.: feature/xyz)"
+        description: 'Branch de origem (ex.: feature/xyz)'
         required: true
         type: string
       target-branch:
-        description: "Branch alvo do PR"
+        description: 'Branch alvo do PR'
         required: false
-        default: "develop"
+        default: 'develop'
         type: string
       pr-title:
-        description: "Título do PR"
+        description: 'Título do PR'
         required: false
-        default: "Automated PR: merge branch into develop"
+        default: 'Automated PR: merge branch into develop'
         type: string
       pr-body:
-        description: "Corpo/descrição do PR"
+        description: 'Corpo/descrição do PR'
         required: false
-        default: ""
+        default: ''
         type: string
       github-token:
-        description: "Token para criar o PR (opcional, padrão GITHUB_TOKEN)"
+        description: 'Token para criar o PR (opcional, padrão GITHUB_TOKEN)'
         required: false
-        default: ""
+        default: ''
         type: string
 
 permissions:
@@ -34,18 +34,44 @@ jobs:
   create_pr:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug inputs
+        run: |
+          echo "source-branch='${{ inputs.source-branch }}'"
+          echo "target-branch='${{ inputs.target-branch }}'"
+
+      - name: Fail if source-branch is empty
+        run: |
+          if [ -z "${SOURCE}" ]; then
+            echo "Input 'source-branch' está vazio. O PR não será criado."
+            exit 1
+          fi
+        env:
+          SOURCE: ${{ inputs.source-branch }}
+
       - name: Checkout repository (fetch all branches)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Ensure remote branches are available
-        run: git fetch --no-tags --prune --unshallow || true
+        run: |
+          git fetch --no-tags --prune --unshallow || true
+          git fetch origin "${{ inputs.source-branch }}:${{ inputs.source-branch }}" || true
+          git fetch origin "${{ inputs.target-branch }}:${{ inputs.target-branch }}" || true
+          git branch -a
+          git rev-parse --verify "origin/${{ inputs.source-branch }}" || {
+            echo "Branch de origem não encontrada no remoto."
+            exit 1
+          }
+          git rev-parse --verify "origin/${{ inputs.target-branch }}" || {
+            echo "Branch alvo não encontrada no remoto."
+            exit 1
+          }
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
+        uses: peter-evans/create-pull-request@v5
         with:
-          token: ${{ inputs.github-token || github.token }}
+          token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
           base: ${{ inputs.target-branch }}
           head: ${{ inputs.source-branch }}
           title: ${{ inputs.pr-title }}
