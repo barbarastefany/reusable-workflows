@@ -1,0 +1,36 @@
+on:
+  workflow_call:
+    inputs:
+      jdk-version:
+        description: "Versão do JDK"
+        required: false
+        default: "17"
+        type: string
+      maven-args:
+        description: "Argumentos adicionais para mvn"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK and enable Maven cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.jdk-version }}
+          cache: maven
+
+      - name: Build (package, skip tests)
+        run: mvn -B -DskipTests=true package ${{ inputs.maven-args }}
+
+      - name: Run tests
+        run: mvn -B test ${{ inputs.maven-args }}

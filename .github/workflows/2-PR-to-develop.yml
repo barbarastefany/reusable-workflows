@@ -1,0 +1,54 @@
+on:
+  workflow_call:
+    inputs:
+      source-branch:
+        description: "Branch de origem (ex.: feature/xyz)"
+        required: true
+        type: string
+      target-branch:
+        description: "Branch alvo do PR"
+        required: false
+        default: "develop"
+        type: string
+      pr-title:
+        description: "Título do PR"
+        required: false
+        default: "Automated PR: merge branch into develop"
+        type: string
+      pr-body:
+        description: "Corpo/descrição do PR"
+        required: false
+        default: ""
+        type: string
+      github-token:
+        description: "Token para criar o PR (opcional, padrão GITHUB_TOKEN)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create_pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (fetch all branches)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure remote branches are available
+        run: git fetch --no-tags --prune --unshallow || true
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ inputs.github-token || github.token }}
+          base: ${{ inputs.target-branch }}
+          head: ${{ inputs.source-branch }}
+          title: ${{ inputs.pr-title }}
+          body: ${{ inputs.pr-body }}
+          maintainer-can-modify: true
+          draft: false
