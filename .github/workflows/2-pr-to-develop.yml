@@ -49,10 +49,10 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const head = `${{ toJSON(inputs.source-branch) }}`;
-            const base = `${{ toJSON(inputs.target-branch) }}`;
-            const title = `${{ toJSON(inputs.pr-title) }}`;
-            const body = `${{ toJSON(inputs.pr-body) }}`;
+            const head = core.getInput('source-branch');
+            const base = core.getInput('target-branch');
+            const title = core.getInput('pr-title');
+            const body = core.getInput('pr-body');
 
             // Verifica existência das branches via API (refs/heads/<branch>)
             async function branchExists(branch) {
