@@ -23,7 +23,8 @@ Arquivo: `.github/workflows/1-build-test.yml`
 - Inputs:
   - `jdk-version` (padrão: 17)
   - `maven-args` (argumentos opcionais adicionais, ex.: `-DskipTests`)
-  - `working-directory` (diretório do subprojeto, opcional)
+  - `source-branch` (padrão: `feature/sua-branch`)
+  - `target-branch` (padrão: `develop`)
 
 Exemplo de uso em um repositório consumidor:
 ```yaml
@@ -52,10 +53,7 @@ jobs:
     with:
       source-branch: "${{ github.ref_name }}"
       target-branch: "develop"
-      pr-title: "${{ format('PR criado: merge {0} -> {1}', github.ref_name, 'develop') }}"
-      pr-body: ""
     secrets: inherit
-
 ```
 
 ### 2. PR para Main
@@ -64,8 +62,6 @@ Arquivo: `.github/workflows/3-pr-to-main.yml`
 - Inputs:
   - `source-branch` (padrão: `develop`)
   - `target-branch` (padrão: `main`)
-  - `pr-title`, `pr-body` (opcionais)
-  - `github-token` (opcional)
 
 Exemplo que cria PR de develop para main automaticamente quando um PR para develop é mergeado:
 ```yaml
@@ -84,8 +80,8 @@ jobs:
       pull-requests: write
     uses: barbarastefany/reusable-workflows/.github/workflows/3-pr-to-main.yml@main
     with:
-      pr-title: "${{ format('PR criado: merge {0} -> {1}', 'develop', 'main') }}"
-      pr-body: ""
+      source-branch: "develop"
+      target-branch: "main"
     secrets: inherit
 ```
 
