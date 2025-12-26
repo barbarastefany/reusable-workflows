@@ -51,7 +51,7 @@ jobs:
             const fromEvent = (eventRefName || eventRef.replace(/^refs\/heads\//, ''));
             if (!head && fromEvent) head = fromEvent;
 
-            const title = core.getInput('pr-title') || `PR criado automaticamente: merge ${head} -> ${base}`;
+            const title = core.getInput('pr-title') || `PR criado automaticamente: merge ${head} → ${base}`;
             const body = core.getInput('pr-body') || '';
 
             // Normaliza valores: trim, remove aspas e prefixo refs/heads/
