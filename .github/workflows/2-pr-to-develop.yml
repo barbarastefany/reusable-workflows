@@ -44,6 +44,13 @@ jobs:
             // Captura inputs
             let head = core.getInput('source-branch') || '';
             let base = core.getInput('target-branch') || 'develop';
+
+            // Fallback: quando não há input, usa a branch do evento
+            const eventRefName = context.ref_name || '';
+            const eventRef = context.ref || '';
+            const fromEvent = (eventRefName || eventRef.replace(/^refs\/heads\//, ''));
+            if (!head && fromEvent) head = fromEvent;
+
             const title = core.getInput('pr-title') || `Automated PR: merge ${head} -> ${base}`;
             const body = core.getInput('pr-body') || '';
 
@@ -58,10 +65,10 @@ jobs:
             head = normalize(head);
             base = normalize(base);
 
-            core.info(`Head recebido: '${head}' | Base recebida: '${base}'`);
+            core.info(`Head recebido (final): '${head}' | Base recebida: '${base}'`);
 
             if (!head) {
-              core.setFailed("Input 'source-branch' está vazio. Forneça a branch de origem.");
+              core.setFailed("Input 'source-branch' está vazio e não foi possível inferir a branch do evento.");
               return;
             }
             if (!base) {
