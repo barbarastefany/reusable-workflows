@@ -43,7 +43,7 @@ jobs:
             const repo = context.repo.repo;
             const base = core.getInput('target-branch') || 'main';
             const head = core.getInput('source-branch') || 'develop';
-            const title = core.getInput('pr-title') || `Automated PR: merge ${head} → ${base}`;
+            const title = core.getInput('pr-title') || `PR criado automaticamente: merge ${head} → ${base}`;
             const body = core.getInput('pr-body') || '';
 
             // Verifica existência das branches via API (refs/heads/<branch>)
