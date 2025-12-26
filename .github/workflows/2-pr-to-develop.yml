@@ -27,7 +27,6 @@ on:
         type: string
 
 permissions:
-  contents: read
   pull-requests: write
 
 jobs:
@@ -43,30 +42,40 @@ jobs:
         env:
           SOURCE: ${{ inputs.source-branch }}
 
-      - name: Checkout repository (fetch all branches)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Ensure remote branches exist
-        run: |
-          git fetch --no-tags --prune --unshallow || true
-          git fetch origin "${{ inputs.source-branch }}:${{ inputs.source-branch }}" || true
-          git fetch origin "${{ inputs.target-branch }}:${{ inputs.target-branch }}" || true
-          git rev-parse --verify "origin/${{ inputs.source-branch }}" || { echo "Branch de origem não encontrada no remoto."; exit 1; }
-          git rev-parse --verify "origin/${{ inputs.target-branch }}" || { echo "Branch alvo não encontrada no remoto."; exit 1; }
-
-      - name: Create PR via API
+      - name: Validate branches via API and create PR
         uses: actions/github-script@v7
         with:
           github-token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const head = '${{ inputs.source-branch }}';
-            const base = '${{ inputs.target-branch }}';
+            const head = `${{ toJSON(inputs.source-branch) }}`;
+            const base = `${{ toJSON(inputs.target-branch) }}`;
             const title = `${{ toJSON(inputs.pr-title) }}`;
             const body = `${{ toJSON(inputs.pr-body) }}`;
+
+            // Verifica existência das branches via API (refs/heads/<branch>)
+            async function branchExists(branch) {
+              try {
+                await github.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+                return true;
+              } catch (e) {
+                if (e.status === 404) return false;
+                throw e; // Erro inesperado
+              }
+            }
+
+            const sourceExists = await branchExists(head);
+            if (!sourceExists) {
+              core.setFailed(`Branch de origem não encontrada: ${head}`);
+              return;
+            }
+
+            const targetExists = await branchExists(base);
+            if (!targetExists) {
+              core.setFailed(`Branch alvo não encontrada: ${base}`);
+              return;
+            }
 
             // Verifica se já existe PR aberto de head -> base
             const existing = await github.paginate(github.rest.pulls.list, {

@@ -11,9 +11,11 @@ on:
         required: false
         default: ""
         type: string
-
-permissions:
-  contents: read
+      working-directory:
+        description: "Diretório onde o Maven deve ser executado (opcional)"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build_and_test:
@@ -29,8 +31,6 @@ jobs:
           java-version: ${{ inputs.jdk-version }}
           cache: maven
 
-      - name: Build (package, skip tests)
-        run: mvn -B -DskipTests=true package ${{ inputs.maven-args }}
-
-      - name: Run tests
-        run: mvn -B test ${{ inputs.maven-args }}
+      - name: Build (package + tests)
+        run: mvn -B package ${{ inputs.maven-args }}
+        working-directory: ${{ inputs.working-directory }}
