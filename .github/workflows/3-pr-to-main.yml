@@ -9,27 +9,57 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout da branch develop
+      - name: Checkout develop
         uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 0
 
-      - name: Verificar diferenças com main
+      - name: Criar tag de versão automática
+        id: version
         run: |
-          echo "Verificando diferenças entre develop e main..."
-          git fetch origin main
-          git log --oneline --graph origin/main..HEAD || echo "Sem commits diferentes"
-          git diff --name-only origin/main...HEAD || echo "Sem arquivos modificados"
+          # Gera versão baseada na data
+          VERSION="release-$(date +%Y%m%d-%H%M%S)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Cria arquivo de release
+          echo "# Release $VERSION" > RELEASE.md
+          echo "Data: $(date)" >> RELEASE.md
+          echo "Branch: develop" >> RELEASE.md
+          git add RELEASE.md
+          
+          # Configura git
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          # Commit apenas se houver mudanças
+          git diff --cached --quiet || git commit -m "chore: release $VERSION [skip ci]"
 
-      - name: Create PR from develop to main
+      - name: Push do commit de release (se houver)
+        if: success()
+        run: |
+          # Verifica se há commits para push
+          if git log origin/develop..HEAD --oneline | grep -q .; then
+            git push origin develop
+            echo "✅ Commit de release pushed"
+          else
+            echo "⚠️ Nenhum commit novo para push"
+          fi
+
+      - name: Create PR to main
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: develop
           base: main
-          title: "PR automático: develop -> main"
+          title: "🚀 Release: ${{ steps.version.outputs.version }}"
           body: |
-            PR automático gerado após merge em develop.
-            Preparado para release de produção.
-          labels: release,production
+            ## Release Automático - ${{ steps.version.outputs.version }}
+            
+            Criado automaticamente após merge em develop.
+            
+            **Data**: $(date)
+            
+            ### 📝 Notas
+            Este PR inclui todas as features aprovadas em develop.
+          labels: release,production,automated
