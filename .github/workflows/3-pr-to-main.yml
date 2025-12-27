@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       source-branch:
-        description: "Branch de origem (padrão develop)"
-        required: false
-        default: "develop"
+        description: "Branch de origem (ex.: develop)"
+        required: true
+        # removed default to avoid unintended triggers
         type: string
       target-branch:
         description: "Branch alvo do PR (padrão main)"
@@ -62,6 +62,11 @@ jobs:
             }
             if (!base) {
               core.setFailed('Branch alvo não fornecida.');
+              return;
+            }
+
+            if (head !== 'develop' && base === 'main') {
+              core.setFailed(`Esta rotina foi projetada para criar PR de 'develop' para 'main'. Recebido head='${head}'.`);
               return;
             }
 

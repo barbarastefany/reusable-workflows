@@ -58,6 +58,11 @@ jobs:
               return;
             }
 
+            if (target !== 'develop') {
+              core.setFailed(`Esta rotina só deve criar PRs para 'develop'. Recebido target='${target}'.`);
+              return;
+            }
+
             if (source === target) {
               core.info(`Source branch (${source}) equals target (${target}). Nothing to do.`);
               core.setOutput('pr_number', '');
