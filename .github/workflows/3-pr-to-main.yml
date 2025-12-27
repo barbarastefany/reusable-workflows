@@ -9,6 +9,19 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      - name: Checkout da branch develop
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+
+      - name: Verificar diferenças com main
+        run: |
+          echo "Verificando diferenças entre develop e main..."
+          git fetch origin main
+          git log --oneline --graph origin/main..HEAD || echo "Sem commits diferentes"
+          git diff --name-only origin/main...HEAD || echo "Sem arquivos modificados"
+
       - name: Create PR from develop to main
         uses: peter-evans/create-pull-request@v5
         with:
@@ -18,4 +31,5 @@ jobs:
           title: "PR automático: develop -> main"
           body: |
             PR automático gerado após merge em develop.
+            Preparado para release de produção.
           labels: release,production
