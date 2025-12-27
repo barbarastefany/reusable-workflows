@@ -6,6 +6,9 @@ on:
         required: true
         type: string
         description: 'Number of the PR that was merged to develop'
+    secrets:
+      GITHUB_TOKEN:
+        required: true
 
 jobs:
   create-release-pr:
@@ -57,5 +60,5 @@ jobs:
             4. [ ] Merge to deploy to production
 
             ---
-            *Automatically generated after merge of PR #${{ inputs['merged-pr-number'] }} to develop*
+            \*Automatically generated after merge of PR #${{ inputs['merged-pr-number'] }} to develop\*
           labels: release,production,automated
