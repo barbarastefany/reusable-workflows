@@ -3,10 +3,7 @@ on:
   workflow_call:
     inputs:
       feature-branch:
-        required: false
-        type: string
-      source-branch:
-        required: false
+        required: true
         type: string
 
 jobs:
@@ -16,24 +13,43 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Determine which input to use
-        id: determine-branch
+      - name: Checkout da branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.feature-branch }}
+          fetch-depth: 0
+
+      - name: Configurar Git
         run: |
-          # Usa source-branch se disponível, caso contrário feature-branch
-          if [ -n "${{ inputs.source-branch }}" ]; then
-            echo "branch=${{ inputs.source-branch }}" >> $GITHUB_OUTPUT
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Verificar se já existe PR aberto
+        id: check-pr
+        run: |
+          # Verifica se já existe um PR desta branch para develop
+          PRS=$(gh pr list --base develop --head "${{ inputs.feature-branch }}" --state open --json number)
+          if [ "$PRS" != "[]" ]; then
+            echo "PR já existe"
+            echo "skip=true" >> $GITHUB_OUTPUT
           else
-            echo "branch=${{ inputs.feature-branch }}" >> $GITHUB_OUTPUT
+            echo "skip=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create PR from feature to develop
+        if: steps.check-pr.outputs.skip == 'false'
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ steps.determine-branch.outputs.branch }}
+          branch: ${{ inputs.feature-branch }}
           base: develop
-          title: "PR automático: ${{ steps.determine-branch.outputs.branch }} -> develop"
+          title: "PR automático: ${{ inputs.feature-branch }} -> develop"
           body: |
             PR automático gerado após build e testes bem-sucedidos.
-            Branch: ${{ steps.determine-branch.outputs.branch }}
+            Branch: ${{ inputs.feature-branch }}
           labels: automated-pr
+          assignees: ""
+          reviewers: ""
+          draft: false
