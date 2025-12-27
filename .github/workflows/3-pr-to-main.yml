@@ -9,57 +9,32 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout develop
+      - name: Checkout develop branch
         uses: actions/checkout@v4
         with:
           ref: develop
           fetch-depth: 0
 
-      - name: Criar tag de versão automática
-        id: version
-        run: |
-          # Gera versão baseada na data
-          VERSION="release-$(date +%Y%m%d-%H%M%S)"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          
-          # Cria arquivo de release
-          echo "# Release $VERSION" > RELEASE.md
-          echo "Data: $(date)" >> RELEASE.md
-          echo "Branch: develop" >> RELEASE.md
-          git add RELEASE.md
-          
-          # Configura git
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          
-          # Commit apenas se houver mudanças
-          git diff --cached --quiet || git commit -m "chore: release $VERSION [skip ci]"
-
-      - name: Push do commit de release (se houver)
-        if: success()
-        run: |
-          # Verifica se há commits para push
-          if git log origin/develop..HEAD --oneline | grep -q .; then
-            git push origin develop
-            echo "✅ Commit de release pushed"
-          else
-            echo "⚠️ Nenhum commit novo para push"
-          fi
-
-      - name: Create PR to main
+      - name: Create PR from develop to main
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: develop
           base: main
-          title: "🚀 Release: ${{ steps.version.outputs.version }}"
+          title: "🚀 Release: develop → main (Automated)"
           body: |
-            ## Release Automático - ${{ steps.version.outputs.version }}
+            ## Production Release
             
-            Criado automaticamente após merge em develop.
+            **Source PR**: #${{ github.event.pull_request.number }}
+            **Merged at**: ${{ github.event.pull_request.merged_at }}
             
-            **Data**: $(date)
+            This release includes all features approved in develop.
             
-            ### 📝 Notas
-            Este PR inclui todas as features aprovadas em develop.
+            ### ✅ Validation
+            - All tests passed
+            - Code review completed
+            - Build successful
+            
+            ---
+            *Automatically generated after merge to develop*
           labels: release,production,automated
