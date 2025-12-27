@@ -1,121 +1,26 @@
-name: Create PR to develop
-
+name: 2. Create PR to Develop
 on:
   workflow_call:
     inputs:
-      source-branch:
-        description: 'Branch de origem (ex.: feature/xyz)'
+      feature-branch:
         required: true
         type: string
-      target-branch:
-        description: 'Branch alvo do PR'
-        required: false
-        default: 'develop'
-        type: string
-      pr-title:
-        description: 'Título do PR'
-        required: false
-        default: 'Automated PR: merge branch into develop'
-        type: string
-      pr-body:
-        description: 'Corpo/descrição do PR'
-        required: false
-        default: ''
-        type: string
-      github-token:
-        description: 'Token para criar o PR (opcional, padrão GITHUB_TOKEN)'
-        required: false
-        default: ''
-        type: string
-
-permissions:
-  pull-requests: write
-  contents: read
 
 jobs:
-  create_pr:
+  create-pr:
     runs-on: ubuntu-latest
-    outputs:
-      pr_number: ${{ steps.pr_step.outputs.pr_number }}
-      pr_url: ${{ steps.pr_step.outputs.pr_url }}
-      created: ${{ steps.pr_step.outputs.created }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Validate branches via API and create PR
-        id: pr_step
-        uses: actions/github-script@v7
+      - name: Create PR from feature to develop
+        uses: peter-evans/create-pull-request@v5
         with:
-          github-token: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const source = `${{ inputs.source-branch }}`;
-            const target = `${{ inputs.target-branch }}`;
-            const titleInput = `${{ inputs.pr-title }}`;
-            const bodyInput = `${{ inputs.pr-body }}`;
-
-            if (!source) {
-              core.setFailed('Input source-branch is required');
-              return;
-            }
-
-            if (target !== 'develop') {
-              core.setFailed(`Esta rotina só deve criar PRs para 'develop'. Recebido target='${target}'.`);
-              return;
-            }
-
-            if (source === target) {
-              core.info(`Source branch (${source}) equals target (${target}). Nothing to do.`);
-              core.setOutput('pr_number', '');
-              core.setOutput('pr_url', '');
-              core.setOutput('created', 'false');
-              return;
-            }
-
-            // Verify source branch exists
-            try {
-              await github.rest.repos.getBranch({ owner, repo, branch: source });
-            } catch (err) {
-              core.setFailed(`Source branch '${source}' not found: ${err.message}`);
-              return;
-            }
-
-            core.info(`Checking for open PRs from ${source} -> ${target}...`);
-            const existing = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${source}`, base: target });
-
-            if (existing.data && existing.data.length > 0) {
-              const pr = existing.data[0];
-              core.info(`Open PR already exists: ${pr.html_url}`);
-              core.setOutput('pr_number', String(pr.number));
-              core.setOutput('pr_url', pr.html_url);
-              core.setOutput('created', 'false');
-              return;
-            }
-
-            const title = titleInput || `Auto: ${source} → ${target}`;
-            let body = bodyInput || `Este PR foi criado automaticamente para mesclar ${source} em ${target}.`;
-            body += `\n\nCI Run: ${process.env.GITHUB_SERVER_URL}/${owner}/${repo}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-
-            try {
-              const prResp = await github.rest.pulls.create({ owner, repo, title, head: source, base: target, body });
-              core.info(`PR created: ${prResp.data.html_url}`);
-              core.setOutput('pr_number', String(prResp.data.number));
-              core.setOutput('pr_url', prResp.data.html_url);
-              core.setOutput('created', 'true');
-              return;
-            } catch (err) {
-              // Handle potential race/duplicate error (422)
-              if (err.status === 422) {
-                core.info('Received 422 when creating PR — rechecking for duplicates...');
-                const retry = await github.rest.pulls.list({ owner, repo, state: 'open', head: `${owner}:${source}`, base: target });
-                if (retry.data && retry.data.length > 0) {
-                  const pr = retry.data[0];
-                  core.info(`PR exists after re-check: ${pr.html_url}`);
-                  core.setOutput('pr_number', String(pr.number));
-                  core.setOutput('pr_url', pr.html_url);
-                  core.setOutput('created', 'false');
-                  return;
-                }
-              }
-              // rethrow for visibility
-              throw err;
-            }
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ inputs.feature-branch }}
+          base: develop
+          title: "PR automático: ${{ inputs.feature-branch }} -> develop"
+          body: |
+            PR automático gerado após build e testes bem-sucedidos.
+            Branch: ${{ inputs.feature-branch }}
+          labels: automated-pr

@@ -1,43 +1,33 @@
-name: Build and Test
-
+name: 1. Build and Test
 on:
-  push:
-    branches:
-      - 'feature/**'
-  pull_request:
-  workflow_dispatch:
   workflow_call:
     inputs:
-      jdk-version:
-        description: "Versão do JDK"
+      java-version:
         required: false
-        default: "17"
         type: string
-      maven-args:
-        description: "Argumentos adicionais para mvn"
-        required: false
-        default: ""
-        type: string
-      working-directory:
-        description: "Diretório onde o Maven deve ser executado (opcional)"
-        required: false
-        default: ""
-        type: string
+        default: '17'
 
 jobs:
-  build_and_test:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up JDK and enable Maven cache
+      - name: Setup Java ${{ inputs.java-version }}
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: ${{ inputs.jdk-version }}
-          cache: maven
+          java-version: ${{ inputs.java-version }}
+          distribution: 'temurin'
 
-      - name: Build (package + tests)
-        run: mvn -B package ${{ inputs.maven-args }}
-        working-directory: ${{ inputs.working-directory }}
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: maven-${{ hashFiles('pom.xml') }}
+
+      - name: Build with Maven
+        run: mvn clean compile
+
+      - name: Run unit tests
+        run: mvn test
