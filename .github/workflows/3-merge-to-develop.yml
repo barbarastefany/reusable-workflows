@@ -1,0 +1,48 @@
+name: 3. Manual Merge PR to Develop
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: Número do PR que mergeia no branch develop
+        required: true
+        type: number
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-pr-to-develop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge PR usando a API do GitHub
+        uses: actions/github-script@v7
+        id: merge
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = parseInt(core.getInput('pr-number'));
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+            if (pr.base.ref !== 'develop') {
+              core.setFailed(`PR #${prNumber} não aponta para 'develop' (base: ${pr.base.ref}).`);
+              return;
+            }
+            if (pr.merged) {
+              core.info(`PR #${prNumber} já está mergeado.`);
+            } else {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                merge_method: 'squash'
+              });
+              core.info(`PR #${prNumber} mergeado com sucesso em 'develop'.`);
+            }
+            core.setOutput('merged-pr-number', prNumber)
+    outputs:
+      merged-pr-number: ${{ steps.merge.outputs.merged-pr-number }}
