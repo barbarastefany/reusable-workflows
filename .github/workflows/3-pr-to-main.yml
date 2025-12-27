@@ -6,9 +6,6 @@ on:
         required: true
         type: string
         description: 'Number of the PR that was merged to develop'
-    secrets:
-      GITHUB_TOKEN:
-        required: true
 
 jobs:
   create-release-pr:
