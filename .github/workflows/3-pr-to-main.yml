@@ -1,9 +1,14 @@
-name: 3. Create PR to Main
+name: 3. Create PR to Main (Safer)
 on:
   workflow_call:
+    inputs:
+      merged-pr-number:
+        required: true
+        type: string
+        description: 'Number of the PR that was merged to develop'
 
 jobs:
-  create-pr:
+  create-release-pr:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -15,26 +20,43 @@ jobs:
           ref: develop
           fetch-depth: 0
 
-      - name: Create PR from develop to main
+      - name: Create unique release branch
+        id: create-branch
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          RELEASE_BRANCH="release/auto-${TIMESTAMP}"
+          git checkout -b "${RELEASE_BRANCH}"
+          echo "release_branch=${RELEASE_BRANCH}" >> $GITHUB_OUTPUT
+          echo "✅ Created release branch: ${RELEASE_BRANCH}"
+
+      - name: Create Release Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: develop
+          branch: ${{ steps.create-branch.outputs.release_branch }}
           base: main
-          title: "🚀 Release: develop → main (Automated)"
+          # ⭐⭐ AGORA USAMOS O INPUT NO TÍTULO E BODY
+          title: "🚀 Release: develop → main (Source: PR #${{ inputs.merged-pr-number }})"
           body: |
-            ## Production Release
-            
-            **Source PR**: #${{ github.event.pull_request.number }}
-            **Merged at**: ${{ github.event.pull_request.merged_at }}
-            
-            This release includes all features approved in develop.
-            
-            ### ✅ Validation
-            - All tests passed
-            - Code review completed
-            - Build successful
-            
+            ## Production Release Candidate
+
+            This release promotes the latest state of `develop` to `main`.
+
+            **Source Information**:
+            - **Trigger PR**: #${{ inputs.merged-pr-number }}
+            - **Release Branch**: `${{ steps.create-branch.outputs.release_branch }}`
+            - **Generated**: $(date)
+
+            ### 🔗 Related Links
+            - [View source PR #${{ inputs.merged-pr-number }}](https://github.com/${{ github.repository }}/pull/${{ inputs.merged-pr-number }})
+            - [Compare develop → main](https://github.com/${{ github.repository }}/compare/main...develop)
+
+            ### 📋 Merge Checklist
+            1. ✅ All CI checks passed on source PR
+            2. ✅ Code review completed
+            3. [ ] Final review of this release PR
+            4. [ ] Merge to deploy to production
+
             ---
-            *Automatically generated after merge to develop*
+            *Automatically generated after merge of PR #${{ inputs.merged-pr-number }} to develop*
           labels: release,production,automated
