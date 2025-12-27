@@ -38,18 +38,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verificar estado do Git ANTES de criar PR
+        run: |
+              echo "=== ESTADO ATUAL ==="
+              echo "Branch atual: $(git branch --show-current)"
+              echo ""
+              echo "Commits em feature/teste mas NÃO em develop:"
+              git log --oneline origin/develop..origin/${{ inputs.feature-branch }} || echo "Erro ao comparar"
+              echo ""
+              echo "Arquivos modificados:"
+              git diff --name-only origin/develop...HEAD || echo "Sem diferenças"
+              echo "===================="
+
       - name: Create PR from feature to develop
-        if: steps.check-pr.outputs.skip == 'false'
-        uses: peter-evans/create-pull-request@v5
+        uses: repo-sync/pull-request@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ inputs.feature-branch }}
-          base: develop
-          title: "PR automático: ${{ inputs.feature-branch }} -> develop"
-          body: |
-            PR automático gerado após build e testes bem-sucedidos.
-            Branch: ${{ inputs.feature-branch }}
-          labels: automated-pr
-          assignees: ""
-          reviewers: ""
-          draft: false
+          source_branch: ${{ inputs.feature-branch }}
+          destination_branch: develop
+          pr_title: "PR: ${{ inputs.feature-branch }} → develop"
+          pr_body: "Automático após CI bem-sucedido"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
