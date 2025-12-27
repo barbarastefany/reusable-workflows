@@ -35,20 +35,19 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ steps.create-branch.outputs.release_branch }}
           base: main
-          # ⭐⭐ AGORA USAMOS O INPUT NO TÍTULO E BODY
-          title: "🚀 Release: develop → main (Source: PR #${{ inputs.merged-pr-number }})"
+          title: "🚀 Release: develop → main (Source: PR #${{ inputs['merged-pr-number'] }})"
           body: |
             ## Production Release Candidate
 
             This release promotes the latest state of `develop` to `main`.
 
             **Source Information**:
-            - **Trigger PR**: #${{ inputs.merged-pr-number }}
+            - **Trigger PR**: #${{ inputs['merged-pr-number'] }}
             - **Release Branch**: `${{ steps.create-branch.outputs.release_branch }}`
             - **Generated**: $(date)
 
             ### 🔗 Related Links
-            - [View source PR #${{ inputs.merged-pr-number }}](https://github.com/${{ github.repository }}/pull/${{ inputs.merged-pr-number }})
+            - [View source PR #${{ inputs['merged-pr-number'] }}](https://github.com/${{ github.repository }}/pull/${{ inputs['merged-pr-number'] }})
             - [Compare develop → main](https://github.com/${{ github.repository }}/compare/main...develop)
 
             ### 📋 Merge Checklist
@@ -58,5 +57,5 @@ jobs:
             4. [ ] Merge to deploy to production
 
             ---
-            *Automatically generated after merge of PR #${{ inputs.merged-pr-number }} to develop*
+            *Automatically generated after merge of PR #${{ inputs['merged-pr-number'] }} to develop*
           labels: release,production,automated
