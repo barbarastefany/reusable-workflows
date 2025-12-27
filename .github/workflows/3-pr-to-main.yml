@@ -1,4 +1,4 @@
-name: 3. Create PR to Main (Safer)
+name: 3. Create PR to Main
 on:
   workflow_call:
     inputs:
