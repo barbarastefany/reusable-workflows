@@ -7,11 +7,11 @@ on:
         required: true
         type: string
       base-branch:
-        required: false
+        required: true
         type: string
         default: 'develop'
       target-branch:
-        required: false
+        required: true
         type: string
         default: 'main'
 
