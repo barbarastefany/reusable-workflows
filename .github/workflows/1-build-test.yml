@@ -1,8 +1,6 @@
 name: 1. Build and Test
 
 on:
-  push:
-    branches: [ 'feature/**' ]
   workflow_call:
     inputs:
       java-version:
@@ -11,7 +9,7 @@ on:
         default: '17'
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
   Build-and-Test:

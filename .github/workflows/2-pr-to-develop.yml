@@ -1,28 +1,28 @@
-name: 2. Create PR to Develop
+name: 2. Create PR to develop
 
 on:
-  workflow_run:
-    workflows: [ '1. Build and Test' ]
-    types: [ completed ]
-    branches: [ 'feature/**' ]
   workflow_call:
     inputs:
       feature-branch:
         required: true
         type: string
+      destination-branch:
+        required: false
+        type: string
+        default: 'develop'
 
 jobs:
   create-pr:
-    name: Criando PR de feature para develop
+    name: Criar PR de feature para develop
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout da branch
+      - name: Checkout da branch de feature
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch || inputs.feature-branch }}
+          ref: ${{ inputs.feature-branch }}
           fetch-depth: 0
 
       - name: Configurar Git
@@ -30,13 +30,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Buscar branch de destino
+        run: git fetch origin ${{ inputs.destination-branch }}
+
       - name: Verificar se já existe PR aberto
         id: check-pr
         run: |
-          BRANCH="${{ github.event.workflow_run.head_branch || inputs.feature-branch }}"
-          PRS=$(gh pr list --base develop --head "${BRANCH}" --state open --json number)
+          PRS=$(gh pr list --base "${{ inputs.destination-branch }}" --head "${{ inputs.feature-branch }}" --state open --json number)
           if [ "$PRS" != "[]" ]; then
-            echo "PR já existe"
             echo "skip=true" >> $GITHUB_OUTPUT
           else
             echo "skip=false" >> $GITHUB_OUTPUT
@@ -44,23 +45,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verificar estado do Git ANTES de criar PR
+      - name: Verificar estado do Git antes de criar PR
         run: |
           echo "=== ESTADO ATUAL ==="
           echo "Branch atual: $(git branch --show-current)"
           echo ""
-          echo "Commits em feature mas NÃO em develop:"
-          git log --oneline origin/develop..HEAD || echo "Erro ao comparar"
+          echo "Commits em feature mas NÃO em ${{ inputs.destination-branch }}:"
+          git log --oneline origin/${{ inputs.destination-branch }}..HEAD || echo "Erro ao comparar"
           echo ""
           echo "Arquivos modificados:"
-          git diff --name-only origin/develop...HEAD || echo "Sem diferenças"
+          git diff --name-only origin/${{ inputs.destination-branch }}...HEAD || echo "Sem diferenças"
           echo "===================="
 
-      - name: Create PR from feature to develop
+      - name: Criar PR
+        if: steps.check-pr.outputs.skip == 'false'
         uses: repo-sync/pull-request@v2
         with:
-          source_branch: ${{ github.event.workflow_run.head_branch || inputs.feature-branch }}
-          destination_branch: develop
-          pr_title: "PR: ${{ github.event.workflow_run.head_branch || inputs.feature-branch }} → develop"
+          source_branch: ${{ inputs.feature-branch }}
+          destination_branch: ${{ inputs.destination-branch }}
+          pr_title: "PR: ${{ inputs.feature-branch }} → ${{ inputs.destination-branch }}"
           pr_body: "Automático após CI bem-sucedido"
           github_token: ${{ secrets.GITHUB_TOKEN }}
