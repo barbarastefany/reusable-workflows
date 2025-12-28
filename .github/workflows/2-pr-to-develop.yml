@@ -64,6 +64,6 @@ jobs:
         with:
           source_branch: ${{ inputs.base-branch }}
           destination_branch: ${{ inputs.target-branch }}
-          pr_title: "PR: ${{ inputs.base-branch }} → ${{ inputs.target-branch }}"
+          pr_title: "PR criado automaticamente"
           pr_body: "Automático após CI bem-sucedido"
           github_token: ${{ secrets.GITHUB_TOKEN }}
