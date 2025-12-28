@@ -1,10 +1,15 @@
 name: 3. Manual Merge PR to Develop
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       pr-number:
         description: Número do PR que mergeia no branch develop
+        required: true
+        type: number
+  workflow_call:
+    inputs:
+      pr-number:
         required: true
         type: number
 
@@ -18,8 +23,7 @@ jobs:
     outputs:
       merged-pr-number: ${{ steps.merge.outputs.merged-pr-number }}
     steps:
-      - name: Merge PR usando a API do GitHub
-        id: merge
+      - id: merge
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
