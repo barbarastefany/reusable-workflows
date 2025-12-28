@@ -1,6 +1,9 @@
 name: 3. Manual Merge PR to Develop
 
 on:
+  pull_request:
+    branches: [ 'develop' ]
+    types: [ closed ]
   workflow_dispatch:
     inputs:
       pr-number:
@@ -20,6 +23,7 @@ permissions:
 jobs:
   merge-pr-to-develop:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.merged == true }}
     outputs:
       merged-pr-number: ${{ steps.merge.outputs.merged-pr-number }}
     steps:
@@ -28,16 +32,21 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prNumber = parseInt(core.getInput('pr-number'));
+            // Se veio de PR fechado, usa o número do PR do evento
+            const fromEvent = context.eventName === 'pull_request';
+            const prNumber = fromEvent ? context.payload.pull_request.number : parseInt(core.getInput('pr-number'));
+
             const { data: pr } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: prNumber
             });
+
             if (pr.base.ref !== 'develop') {
               core.setFailed(`PR #${prNumber} não aponta para 'develop' (base: ${pr.base.ref}).`);
               return;
             }
+
             if (!pr.merged) {
               await github.rest.pulls.merge({
                 owner: context.repo.owner,
@@ -46,4 +55,5 @@ jobs:
                 merge_method: 'squash'
               });
             }
-            core.setOutput('merged-pr-number', prNumber);
+
+            core.setOutput('merged-pr-number', String(prNumber));

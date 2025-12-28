@@ -1,9 +1,9 @@
 name: 4. Create PR to Main
 
 on:
-  workflow_run:
-    workflows: [ '3. Manual Merge PR to Develop' ]
-    types: [ completed ]
+  pull_request:
+    branches: [ 'main' ]
+    types: [ opened ]
   workflow_call:
     inputs:
       merged-pr-number:
@@ -45,7 +45,6 @@ jobs:
             const srcPr = process.env.MERGED_PR_NUMBER || 'N/A';
             const title = `🚀 Release: develop → main (Source: PR #${srcPr})`;
 
-            // Cria o PR usando a API correta
             try {
               const { data } = await github.rest.pulls.create({
                 owner: context.repo.owner,
