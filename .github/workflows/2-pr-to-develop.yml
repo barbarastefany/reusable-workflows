@@ -3,10 +3,10 @@ name: 2. Create PR to develop
 on:
   workflow_call:
     inputs:
-      feature-branch:
+      base-branch:
         required: true
         type: string
-      destination-branch:
+      target-branch:
         required: true
         type: string
         default: 'develop'
@@ -22,7 +22,7 @@ jobs:
       - name: Checkout da branch de feature
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.feature-branch }}
+          ref: ${{ inputs.base-branch }}
           fetch-depth: 0
 
       - name: Configurar Git
@@ -31,12 +31,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Buscar branch de destino
-        run: git fetch origin ${{ inputs.destination-branch }}
+        run: git fetch origin ${{ inputs.target-branch }}
 
       - name: Verificar se já existe PR aberto
         id: check-pr
         run: |
-          PRS=$(gh pr list --base "${{ inputs.destination-branch }}" --head "${{ inputs.feature-branch }}" --state open --json number)
+          PRS=$(gh pr list --base "${{ inputs.target-branch }}" --head "${{ inputs.base-branch }}" --state open --json number)
           if [ "$PRS" != "[]" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
           else
@@ -50,19 +50,19 @@ jobs:
           echo "=== ESTADO ATUAL ==="
           echo "Branch atual: $(git branch --show-current)"
           echo ""
-          echo "Commits em feature mas NÃO em ${{ inputs.destination-branch }}:"
-          git log --oneline origin/${{ inputs.destination-branch }}..HEAD || echo "Erro ao comparar"
+          echo "Commits em feature mas NÃO em ${{ inputs.target-branch }}:"
+          git log --oneline origin/${{ inputs.target-branch }}..HEAD || echo "Erro ao comparar"
           echo ""
           echo "Arquivos modificados:"
-          git diff --name-only origin/${{ inputs.destination-branch }}...HEAD || echo "Sem diferenças"
+          git diff --name-only origin/${{ inputs.target-branch }}...HEAD || echo "Sem diferenças"
           echo "===================="
 
       - name: Criar PR
         if: steps.check-pr.outputs.skip == 'false'
         uses: repo-sync/pull-request@v2
         with:
-          source_branch: ${{ inputs.feature-branch }}
-          destination_branch: ${{ inputs.destination-branch }}
-          pr_title: "PR: ${{ inputs.feature-branch }} → ${{ inputs.destination-branch }}"
+          source_branch: ${{ inputs.base-branch }}
+          destination_branch: ${{ inputs.target-branch }}
+          pr_title: "PR: ${{ inputs.base-branch }} → ${{ inputs.target-branch }}"
           pr_body: "Automático após CI bem-sucedido"
           github_token: ${{ secrets.GITHUB_TOKEN }}
