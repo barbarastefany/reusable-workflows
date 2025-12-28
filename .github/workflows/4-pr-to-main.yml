@@ -34,15 +34,20 @@ jobs:
 
       - name: Create PR develop -> main
         uses: actions/github-script@v7
+        env:
+          RELEASE_BRANCH: ${{ steps.create-branch.outputs.release_branch }}
+          MERGED_PR_NUMBER: ${{ inputs.merged-pr-number }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const title = `🚀 Release: develop → main (Source: PR #${{ inputs['merged-pr-number'] || 'N/A' }})`;
-            const head = `${{ steps.create-branch.outputs.release_branch }}`;
+            const head = process.env.RELEASE_BRANCH;
             const base = 'main';
+            const srcPr = process.env.MERGED_PR_NUMBER || 'N/A';
+            const title = `🚀 Release: develop → main (Source: PR #${srcPr})`;
+
+            // Cria o PR usando a API correta
             try {
-              // Try to create the PR
-              const { data } = await github.pulls.create({
+              const { data } = await github.rest.pulls.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title,
@@ -51,15 +56,14 @@ jobs:
                 maintainer_can_modify: true
               });
               core.info(`Created PR #${data.number}`);
-              // Add labels
-              await github.issues.addLabels({
+
+              await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: data.number,
                 labels: ['release','production','automated']
               });
             } catch (e) {
-              // If PR already exists, do nothing
               if (e.status === 422 && /A pull request already exists/i.test(e.message)) {
                 core.info('PR já existe para esta branch.');
               } else {
