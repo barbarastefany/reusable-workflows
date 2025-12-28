@@ -6,6 +6,7 @@ on:
       base-branch:
         required: true
         type: string
+        default: ''
       target-branch:
         required: true
         type: string
